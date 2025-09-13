@@ -1,0 +1,1 @@
+web: chainlit rn main.p --host 0.0.0.0 --port $PORT
