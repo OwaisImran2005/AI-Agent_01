@@ -129,7 +129,7 @@ alert_style = "classic"
 logo_file_url = "https://i.pinimg.com/736x/98/a8/35/98a8357d3e0b586fe6a8e651f43dbacd.jpg"
 
 # Load assistant avatar image directly from URL.
-default_avatar_file_url = ""
+default_avatar_file_url = "https://i.pinimg.com/736x/98/a8/35/98a8357d3e0b586fe6a8e651f43dbacd.jpg"
 
 # Specify a custom build directory for the frontend.
 # This can be used to customize the frontend code.
