@@ -1,23 +1,24 @@
 import os
 import chainlit as cl
-from agents import Runner, Agent, OpenAIChatCompletionsModel, AsyncOpenAI, RunConfig
-from openai.types.responses import ResponseTextDeltaEvent
+from openai import AsyncOpenAI 
+from agents import Runner, Agent, OpenAIChatCompletionsModel, RunConfig
 from dotenv import load_dotenv
 
 load_dotenv()
 
-gemini_api_key = os.getenv("GEMINI_API_KEY")
+openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
 
 external_client= AsyncOpenAI( 
-  api_key=gemini_api_key,
-  base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-
+  api_key=openrouter_api_key,
+  base_url="https://openrouter.ai/api/v1/"
  )
 
+# --- CHANGED MODEL TO LLAMA (Less likely to be rate limited) ---
 model = OpenAIChatCompletionsModel(
-model="gemini-2.0-flash",
-openai_client=external_client,
+    model="meta-llama/llama-3.2-3b-instruct:free",
+    openai_client=external_client,
 )
+# ---------------------------------------------------------------
 
 config = RunConfig(
     model= model,
@@ -72,23 +73,19 @@ Knowledge Boundaries
 or
 “I'm afraid I cannot answer that. My focus is on matters concerning myself.”
 
-     """ ,
+      """ ,
 )
 
 @cl.on_chat_start
-async def handle_start():                     #history set of user
-    cl.user_session.set("history",[])
-
-    # await cl.Message(content="""This is "L". I observe, I deduce, I eat sweets. I'll listen… but only if it's useful.""",    #onstart message
-    #                  elements=[image],
-    # ).send()                                                                            
+async def handle_start():                                                                     #history set of user
+    cl.user_session.set("history",[])                                                                          
 
 @cl.on_message
 async def handle_message(message : cl.Message):
 
 
     history = cl.user_session.get("history")
-    history.append({"role": "user", "content":message.content})                          #history get of user
+    history.append({"role": "user", "content":message.content})                           #history get of user
 
     msg = cl.Message(content="")                                                         #steamingg response  1
     await msg.send()
@@ -99,28 +96,22 @@ async def handle_message(message : cl.Message):
         run_config=config
     )
     
+    # --- THIS HANDLES THE STREAMING CORRECTLY ---
+    async for event in result.stream_events():
+        if hasattr(event, 'data') and hasattr(event.data, 'delta'):
+            delta = event.data.delta
+            
+    
+            if isinstance(delta, str):
+                await msg.stream_token(delta)
+                
+           
+            elif hasattr(delta, 'content') and delta.content:
+                await msg.stream_token(delta.content)
 
-    async for event in result.stream_events(): 
-        if event.type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):     #streamingg response  2
-            await msg.stream_token(event.data.delta)
 
-
-
-    history.append({"role":"assistant", "content":result.final_output})                   #history get and set of assistant
+    history.append({"role":"assistant", "content":msg.content})                   #history get and set of assistant
     cl.user_session.set("history",history)
 
 
-    # await cl.Message(content=result.final_output).send()   
-
-
-
-
-
-
-
-
-
-
-
-
-
+    await msg.update()
